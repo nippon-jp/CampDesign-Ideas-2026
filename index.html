@@ -11,105 +11,59 @@ import {
   X,
   Plus,
   Loader2,
-  Camera
+  Camera,
+  Filter,
+  ChevronRight
 } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 // --- 初期設定 ---
 const apiKey = ""; // 実行環境から提供されるため空のまま
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'campsite-project';
 
-const PRESET_IDEAS = [
-  {
-    id: 1,
-    title: "湖畔の静寂 - Lakeside Serenity",
-    category: "景観重視",
-    icon: <Waves className="w-6 h-6" />,
-    description: "水面との一体感を追求したデザイン。透明度の高い湖のほとりに、水に浮いているようなウッドデッキを配置します。朝霧や夕焼けを特等席で楽しむための「静かな」キャンプ場です。",
+// カテゴリー定義
+const CATEGORIES = ["すべて", "景観重視", "プライバシー", "環境配慮", "ラグジュアリー", "交流重視"];
+
+// 20個のアイデアデータを生成
+const PRESET_IDEAS = Array.from({ length: 20 }, (_, i) => {
+  const id = i + 1;
+  const paddedId = String(id).padStart(2, '0');
+  const categories = ["景観重視", "プライバシー", "環境配慮", "ラグジュアリー", "交流重視"];
+  const category = categories[i % categories.length];
+  
+  // 各IDごとのデフォルト設定（ユーザーが後で編集することを想定）
+  return {
+    id,
+    title: `コンセプト案 #${paddedId}`,
+    category,
+    localImage: `/artifacts/${appId}/public/data/img${paddedId}.png`,
+    description: `img${paddedId}.png をベースにしたキャンプ場デザイン案。このセクションでは、具体的な配置計画や、使用する素材、ターゲット層に合わせたエクスペリエンスを定義します。`,
     points: [
-      "水際まで伸びるプライベート・ウッドデッキ",
-      "カヌーやSUPを直接出せるスロープ設計",
-      "夜間の水面反射を考慮したミニマルな照明（ダークスカイ対応）"
+      "地形を活かした自然なゾーニング",
+      "プライベート感を高める植栽配置",
+      "夜間の安全を確保する低位置の間接照明"
     ],
-    gear: "透明カヌー、ローチェア、フローティングランタン",
-    imagePrompt: "A high-end minimal lakeside campsite with a low-profile wooden deck stretching over the calm water at dawn, misty atmosphere, modern camping chairs, soft warm lantern light, photo-realistic, cinematic lighting."
-  },
-  {
-    id: 2,
-    title: "森の隠れ家 - Forest Hideaway",
-    category: "プライバシー",
-    icon: <Trees className="w-6 h-6" />,
-    description: "周囲の視線を完全に遮断した、自分だけの深い森。高低差を利用した立体的なサイト設計により、隣のキャンパーを感じさせない贅沢な孤独を提供します。",
-    points: [
-      "天然の斜面を利用した段々畑状のサイト配置",
-      "常設のハンモックスタンドと空中テント",
-      "直火を楽しめる石造りのファイヤーピット"
-    ],
-    gear: "ハンモック、耐熱焚き火ウェア、ブッシュクラフト用具",
-    imagePrompt: "A secluded forest campsite tucked away between ancient trees and mossy stones, tiered wooden platforms, a hanging hammock tent, central stone fire pit with crackling fire at dusk, ethereal sunlight through the canopy, photo-realistic."
-  },
-  {
-    id: 3,
-    title: "サステナブル・エコサイト - Sustainable Eco",
-    category: "環境配慮",
-    icon: <Sun className="w-6 h-6" />,
-    description: "2026年のトレンドである「オフグリッド」を体現。太陽光発電と雨水利用システムを備え、キャンプ場の中心には宿泊者が自由に収穫できるハーブガーデンを配置します。",
-    points: [
-      "各サイトに小型ソーラーパネルと蓄電池を完備",
-      "地産地消を促すエディブル・ランドスケープ（食用の庭）",
-      "環境負荷の低いコンポストトイレと自然濾過排水"
-    ],
-    gear: "ポータブル電源、ソーラークッカー、ハーブティーセット",
-    imagePrompt: "Modern eco-friendly campsite featuring small solar panels, a lush herb garden with wooden raised beds, stylish wooden cabins made of recycled materials, golden hour, sustainable luxury, photo-realistic."
-  },
-  {
-    id: 4,
-    title: "モダン・ボヘミアン - Boho Glamping",
-    category: "ラグジュアリー",
-    icon: <Sparkles className="w-6 h-6" />,
-    description: "SNS世代に響く、ボヘミアンスタイルとモダンデザインの融合。ベルテント内に北欧家具や民族柄のラグを配置し、快適さとデザイン性を両立させます。",
-    points: [
-      "大型ベルテントと透明なドームテントのミックス",
-      "フェアリーライトとマクラメ装飾による空間演出",
-      "専用の屋外シャワーとバスタブ（映えスポット）"
-    ],
-    gear: "ビンテージランタン、厚手のキリムラグ、プロジェクター",
-    imagePrompt: "Luxurious glamping bell tent interior with bohemian decor, macrame wall hangings, colorful rugs, soft warm string lights, cozy furniture, lush nature visible through the tent opening, high-end travel photography style."
-  },
-  {
-    id: 5,
-    title: "コミュニティ・ハブ - Social Hub",
-    category: "交流重視",
-    icon: <Users className="w-6 h-6" />,
-    description: "「繋がり」を重視するソロキャンパー向け。中央に巨大な共有焚き火場とキッチンカウンターを設け、自然な会話が生まれる仕掛けを施します。",
-    points: [
-      "対面で調理可能な大型のアウトドアアイランドキッチン",
-      "一人でも気兼ねなく参加できるサークル状のベンチ",
-      "Wi-Fi完備のコワーキング・ラウンジスペース"
-    ],
-    gear: "大型鋳物鍋、シェア用スパイスセット、ポータブルWi-Fi",
-    imagePrompt: "A circular communal campsite hub at night, large central fire pit with people sitting around, modern outdoor kitchen island, warm glowing lighting, starry sky, social atmosphere, high-quality architectural design."
-  }
-];
+    gear: "セレクトされたアウトドア家具、焚き火台、照明器具",
+    imagePrompt: `A beautiful campsite design showing ${category} theme, high resolution, photo-realistic, cinematic lighting, 4k.`
+  };
+});
 
 export default function App() {
   const [selectedIdea, setSelectedIdea] = useState(null);
+  const [activeCategory, setActiveCategory] = useState("すべて");
   const [generatedImages, setGeneratedImages] = useState({});
   const [loadingImages, setLoadingImages] = useState({});
   const [customPrompt, setCustomPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [customResult, setCustomResult] = useState(null);
 
-  // 初期読み込み時に各コンセプトの画像を生成
-  useEffect(() => {
-    PRESET_IDEAS.forEach(idea => {
-      if (!generatedImages[idea.id]) {
-        generateImageForIdea(idea.id, idea.imagePrompt);
-      }
-    });
-  }, []);
+  // フィルタリングされたアイデア
+  const filteredIdeas = activeCategory === "すべて" 
+    ? PRESET_IDEAS 
+    : PRESET_IDEAS.filter(idea => idea.category === activeCategory);
 
+  // AI画像生成の実行（ローカル画像が読み込めない場合などの予備として）
   const generateImageForIdea = async (id, prompt) => {
+    if (generatedImages[id]) return;
     setLoadingImages(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`, {
@@ -126,7 +80,7 @@ export default function App() {
         setGeneratedImages(prev => ({ ...prev, [id]: url }));
       }
     } catch (error) {
-      console.error("Image generation failed:", error);
+      console.error("AI Image generation failed:", error);
     } finally {
       setLoadingImages(prev => ({ ...prev, [id]: false }));
     }
@@ -136,7 +90,6 @@ export default function App() {
     if (!customPrompt) return;
     setIsGenerating(true);
     try {
-      // 1. 画像生成 (Imagen)
       const imgRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,12 +101,11 @@ export default function App() {
       const imgData = await imgRes.json();
       const imageUrl = imgData.predictions?.[0] ? `data:image/png;base64,${imgData.predictions[0].bytesBase64Encoded}` : null;
 
-      // 2. 解説文生成 (Gemini)
       const textRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `以下のキーワードに基づいたキャンプ場のデザイン案を日本語で詳しく解説してください。構成：コンセプト名、概要（2行）、デザインのポイント（3点）、おすすめギア。キーワード：${customPrompt}` }] }]
+          contents: [{ parts: [{ text: `キャンプ場のデザイン案を日本語で詳しく解説してください。構成：コンセプト名、概要（2行）、デザインのポイント（3点）、おすすめギア。キーワード：${customPrompt}` }] }]
         })
       });
       const textData = await textRes.json();
@@ -170,194 +122,179 @@ export default function App() {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans p-4 md:p-8">
       {/* Header */}
-      <header className="max-w-6xl mx-auto mb-12 text-center">
+      <header className="max-w-7xl mx-auto mb-12 text-center">
         <div className="flex justify-center mb-4">
-          <div className="p-3 bg-emerald-600 text-white rounded-full shadow-lg">
-            <Compass className="w-8 h-8 animate-spin-slow" />
+          <div className="p-3 bg-emerald-700 text-white rounded-2xl shadow-lg">
+            <Compass className="w-8 h-8" />
           </div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-emerald-900 mb-4">CampDesign Ideas 2026</h1>
-        <p className="text-lg text-stone-600 max-w-2xl mx-auto">
-          未来のキャンプ体験をデザインする。AIが生成したビジュアルと解説で、新しいキャンプ場作りのインスピレーションを。
+        <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">Campsite Master Plan Library</h1>
+        <p className="text-lg text-stone-500 max-w-2xl mx-auto mb-8">
+          20の基本コンセプト案と準備されたビジュアルアセット。
         </p>
+
+        {/* Categories Tab */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+                activeCategory === cat 
+                ? "bg-emerald-700 text-white shadow-md scale-105" 
+                : "bg-white text-stone-500 hover:bg-stone-100 border border-stone-200"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* Main Grid */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-        {PRESET_IDEAS.map((idea) => (
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
+        {/* Custom Generator Start Card */}
+        <div className="bg-emerald-50 rounded-2xl border-2 border-dashed border-emerald-200 p-6 flex flex-col items-center justify-center text-center hover:bg-emerald-100/50 transition-colors group">
+          <Sparkles className="w-8 h-8 text-emerald-600 mb-3 group-hover:scale-110 transition-transform" />
+          <h3 className="font-bold text-emerald-900 mb-2 text-sm uppercase tracking-wider">AI Generator</h3>
+          <input 
+            type="text" 
+            placeholder="新しい案を入力..."
+            className="w-full px-3 py-2 bg-white rounded-lg text-xs mb-3 border border-emerald-200"
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+          />
+          <button 
+            onClick={handleCustomGenerate}
+            disabled={isGenerating}
+            className="w-full py-2 bg-emerald-700 text-white rounded-lg text-xs font-bold hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {isGenerating ? "生成中..." : "アイデアを生成"}
+          </button>
+        </div>
+
+        {filteredIdeas.map((idea) => (
           <div 
             key={idea.id} 
-            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-200 flex flex-col cursor-pointer"
+            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-200 cursor-pointer flex flex-col"
             onClick={() => setSelectedIdea(idea)}
           >
-            {/* Image Thumbnail */}
-            <div className="relative h-56 bg-stone-200 overflow-hidden">
-              {loadingImages[idea.id] ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-stone-100">
-                  <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                </div>
-              ) : generatedImages[idea.id] ? (
-                <img 
-                  src={generatedImages[idea.id]} 
-                  alt={idea.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-stone-400">
-                  <Camera className="w-8 h-8" />
-                </div>
-              )}
-              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-emerald-800 flex items-center gap-2">
-                {idea.icon}
+            {/* Image Box */}
+            <div className="relative h-48 bg-stone-100 overflow-hidden">
+              <img 
+                src={idea.localImage} 
+                alt={idea.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                onError={(e) => {
+                  // 画像がない場合はAI生成をトリガー（またはプレースホルダー）
+                  if (!generatedImages[idea.id] && !loadingImages[idea.id]) {
+                    generateImageForIdea(idea.id, idea.imagePrompt);
+                  }
+                  e.target.src = generatedImages[idea.id] || "https://placehold.co/600x400/f5f5f4/065f46?text=Image+Not+Found";
+                }}
+              />
+              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold text-emerald-800 uppercase tracking-tighter shadow-sm">
                 {idea.category}
               </div>
-              <div className="absolute bottom-4 right-4 bg-black/50 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Maximize2 className="w-4 h-4" />
+              <div className="absolute bottom-2 right-2 p-1.5 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <Maximize2 className="w-3 h-3" />
               </div>
             </div>
 
             {/* Content */}
-            <div className="p-6 flex-grow">
-              <h3 className="text-xl font-bold mb-2 group-hover:text-emerald-700 transition-colors">{idea.title}</h3>
-              <p className="text-stone-500 text-sm line-clamp-3 leading-relaxed">
+            <div className="p-4 flex flex-col flex-grow">
+              <div className="text-[10px] text-stone-400 font-mono mb-1">ID: img{String(idea.id).padStart(2, '0')}.png</div>
+              <h3 className="text-md font-bold text-stone-800 mb-2 group-hover:text-emerald-700 transition-colors line-clamp-1">{idea.title}</h3>
+              <p className="text-stone-500 text-xs line-clamp-2 leading-relaxed flex-grow">
                 {idea.description}
               </p>
-            </div>
-            <div className="px-6 pb-6 mt-auto">
-              <button className="w-full py-2 bg-stone-100 text-stone-600 rounded-lg font-medium hover:bg-emerald-600 hover:text-white transition-colors flex items-center justify-center gap-2">
-                <Info className="w-4 h-4" />
-                詳細をみる
-              </button>
+              <div className="mt-4 flex items-center justify-between text-emerald-700 text-[10px] font-bold group-hover:translate-x-1 transition-transform uppercase tracking-widest">
+                View Detail <ChevronRight className="w-3 h-3" />
+              </div>
             </div>
           </div>
         ))}
-
-        {/* Custom Generator Card */}
-        <div className="bg-emerald-50 rounded-2xl border-2 border-dashed border-emerald-200 p-8 flex flex-col items-center justify-center text-center">
-          <div className="p-4 bg-emerald-100 rounded-full mb-4">
-            <Plus className="w-10 h-10 text-emerald-600" />
-          </div>
-          <h3 className="text-xl font-bold mb-2 text-emerald-900">自分だけの案を生成</h3>
-          <p className="text-emerald-700/70 text-sm mb-6">
-            「雪山のドームテント」「滝が見えるサウナ」など<br />キーワードを入れてみてください。
-          </p>
-          <div className="w-full space-y-3">
-            <input 
-              type="text" 
-              placeholder="例: 火山が見える近未来キャンプ..."
-              className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none shadow-inner"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-            />
-            <button 
-              onClick={handleCustomGenerate}
-              disabled={isGenerating || !customPrompt}
-              className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
-            >
-              {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-              アイデアを創り出す
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Custom Result Section */}
+      {/* AI Result Area */}
       {customResult && (
-        <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden mb-16 border border-emerald-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden mb-16 border border-emerald-100">
           <div className="flex flex-col md:flex-row">
-            <div className="md:w-1/2 h-80 md:h-auto bg-stone-100">
-              {customResult.imageUrl ? (
-                <img src={customResult.imageUrl} alt="AI Generated" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-stone-400">画像生成エラー</div>
-              )}
+            <div className="md:w-1/2 h-64 md:h-auto bg-stone-100">
+              <img src={customResult.imageUrl} alt="AI Generated" className="w-full h-full object-cover" />
             </div>
-            <div className="md:w-1/2 p-8 md:p-12">
+            <div className="md:w-1/2 p-8">
               <div className="flex items-center gap-2 text-emerald-600 mb-4">
-                <Sparkles className="w-6 h-6" />
-                <span className="font-bold tracking-widest uppercase text-sm">AI Generated Result</span>
+                <Sparkles className="w-5 h-5" />
+                <span className="font-bold tracking-widest uppercase text-xs">New Vision Created</span>
               </div>
-              <div className="prose prose-stone max-w-none">
-                <div className="whitespace-pre-wrap text-stone-700 leading-relaxed">
-                  {customResult.explanation}
-                </div>
+              <div className="whitespace-pre-wrap text-stone-700 text-sm leading-relaxed">
+                {customResult.explanation}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="text-center text-stone-400 py-12 border-t border-stone-200 max-w-6xl mx-auto">
-        <p>© 2026 Future Camping Design Lab. Powered by Gemini & Imagen.</p>
-      </footer>
-
       {/* Modal View */}
       {selectedIdea && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-stone-900/80 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-y-auto relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden relative animate-in zoom-in-95 duration-200 my-auto">
             <button 
               onClick={() => setSelectedIdea(null)}
-              className="absolute top-6 right-6 p-2 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors z-10"
+              className="absolute top-4 right-4 p-2 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors z-20"
             >
-              <X className="w-6 h-6 text-stone-600" />
+              <X className="w-5 h-5 text-stone-600" />
             </button>
 
-            <div className="flex flex-col lg:flex-row">
-              {/* Modal Image */}
-              <div className="lg:w-3/5 h-64 lg:h-auto bg-stone-200">
-                {generatedImages[selectedIdea.id] ? (
-                  <img 
-                    src={generatedImages[selectedIdea.id]} 
+            <div className="flex flex-col md:flex-row">
+              <div className="md:w-1/2 h-64 md:h-auto bg-stone-200 relative">
+                 <img 
+                    src={ideaIsLocal() ? selectedIdea.localImage : (generatedImages[selectedIdea.id] || "https://placehold.co/600x400/f5f5f4/065f46?text=Campsite+Idea")} 
                     alt={selectedIdea.title}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      if (generatedImages[selectedIdea.id]) e.target.src = generatedImages[selectedIdea.id];
+                    }}
                   />
-                ) : (
-                   <div className="w-full h-full flex items-center justify-center bg-stone-100">
-                    <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+                  <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-[10px] font-mono shadow-sm">
+                    Asset Path: /public/data/img{String(selectedIdea.id).padStart(2, '0')}.png
                   </div>
-                )}
               </div>
 
-              {/* Modal Info */}
-              <div className="lg:w-2/5 p-8 md:p-12">
-                <div className="flex items-center gap-2 text-emerald-600 font-bold mb-4 uppercase tracking-wider text-sm">
-                  {selectedIdea.category}
-                </div>
-                <h2 className="text-3xl font-bold text-emerald-950 mb-6">{selectedIdea.title}</h2>
-                <p className="text-stone-600 leading-relaxed mb-8">
+              <div className="md:w-1/2 p-8">
+                <span className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mb-2 block">{selectedIdea.category}</span>
+                <h2 className="text-2xl font-bold text-stone-900 mb-4">{selectedIdea.title}</h2>
+                <p className="text-stone-500 text-sm leading-relaxed mb-6">
                   {selectedIdea.description}
                 </p>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <h4 className="font-bold text-stone-900 flex items-center gap-2 mb-3">
-                      <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
-                      デザインのポイント
+                    <h4 className="font-bold text-stone-800 text-sm flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+                      プランニング
                     </h4>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1.5">
                       {selectedIdea.points.map((p, i) => (
-                        <li key={i} className="flex gap-3 text-stone-600 text-sm">
-                          <span className="text-emerald-500 font-bold">0{i+1}</span>
+                        <li key={i} className="text-stone-600 text-[11px] flex gap-2">
+                          <span className="text-emerald-500 font-bold">•</span>
                           {p}
                         </li>
                       ))}
                     </ul>
                   </div>
-
-                  <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100">
-                    <h4 className="font-bold text-stone-900 mb-2">おすすめギア</h4>
-                    <p className="text-stone-600 text-sm italic">
-                      {selectedIdea.gear}
-                    </p>
+                  <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+                    <h4 className="font-bold text-stone-800 text-xs mb-1">推奨装備</h4>
+                    <p className="text-stone-500 text-[11px] italic leading-tight">{selectedIdea.gear}</p>
                   </div>
                 </div>
 
                 <button 
                   onClick={() => setSelectedIdea(null)}
-                  className="w-full mt-10 py-4 bg-emerald-900 text-white rounded-xl font-bold hover:bg-emerald-800 transition-colors shadow-lg shadow-emerald-900/20"
+                  className="w-full mt-8 py-3 bg-stone-900 text-white rounded-xl font-bold text-sm hover:bg-emerald-800 transition-colors"
                 >
-                  閉じる
+                  このプランを閉じる
                 </button>
               </div>
             </div>
@@ -366,4 +303,8 @@ export default function App() {
       )}
     </div>
   );
+
+  function ideaIsLocal() {
+    return true; // 常にローカルパスを試みる設定
+  }
 }
