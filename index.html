@@ -1,354 +1,198 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Compass, 
-  Trees, 
-  Waves, 
-  Sun, 
-  Users, 
-  Sparkles, 
-  Info, 
-  Maximize2, 
-  X,
-  Plus,
-  Loader2,
-  Camera,
-  Filter,
-  ChevronRight
-} from 'lucide-react';
-
-// --- 初期設定 ---
-const apiKey = ""; // 実行環境から提供されるため空のまま
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'campsite-project';
-
-// カテゴリー定義
-const CATEGORIES = ["すべて", "景観重視", "プライバシー", "環境配慮", "ラグジュアリー", "交流重視"];
-
-// 20個のアイデアデータを生成
-const PRESET_IDEAS = Array.from({ length: 20 }, (_, i) => {
-  const id = i + 1;
-  const paddedId = String(id).padStart(2, '0');
-  const categories = ["景観重視", "プライバシー", "環境配慮", "ラグジュアリー", "交流重視"];
-  const category = categories[i % categories.length];
-  
-  return {
-    id,
-    title: `コンセプト案 #${paddedId}`,
-    category,
-    localImage: `/artifacts/${appId}/public/data/img${paddedId}.png`,
-    description: `img${paddedId}.png をベースにしたキャンプ場デザイン案。このセクションでは、具体的な配置計画や、使用する素材、ターゲット層に合わせたエクスペリエンスを定義します。`,
-    points: [
-      "地形を活かした自然なゾーニング",
-      "プライベート感を高める植栽配置",
-      "夜間の安全を確保する低位置の間接照明"
-    ],
-    gear: "セレクトされたアウトドア家具、焚き火台、照明器具",
-    imagePrompt: `A beautiful campsite design showing ${category} theme, high resolution, photo-realistic, cinematic lighting, 4k.`
-  };
-});
-
-export default function App() {
-  const [selectedIdea, setSelectedIdea] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("すべて");
-  const [generatedImages, setGeneratedImages] = useState({});
-  const [loadingImages, setLoadingImages] = useState({});
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [customResult, setCustomResult] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  // 指数バックオフ付きのFetch関数
-  const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorData}`);
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campsite Master Plan Library 2026</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        return await response.json();
-      } catch (err) {
-        if (i === retries - 1) throw err;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
-      }
-    }
-  };
-
-  // フィルタリングされたアイデア
-  const filteredIdeas = activeCategory === "すべて" 
-    ? PRESET_IDEAS 
-    : PRESET_IDEAS.filter(idea => idea.category === activeCategory);
-
-  // AI画像生成の実行
-  const generateImageForIdea = async (id, prompt) => {
-    if (generatedImages[id] || loadingImages[id]) return;
-    setLoadingImages(prev => ({ ...prev, [id]: true }));
-    try {
-      const data = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt }],
-            parameters: { sampleCount: 1 }
-          })
+        .animate-spin-slow {
+            animation: spin-slow 8s linear infinite;
         }
-      );
-      
-      if (data.predictions && data.predictions[0]) {
-        const url = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
-        setGeneratedImages(prev => ({ ...prev, [id]: url }));
-      }
-    } catch (error) {
-      console.error("AI Image generation failed:", error);
-    } finally {
-      setLoadingImages(prev => ({ ...prev, [id]: false }));
-    }
-  };
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900">
+    <div id="root"></div>
 
-  const handleCustomGenerate = async () => {
-    if (!customPrompt) return;
-    setIsGenerating(true);
-    setErrorMessage("");
-    try {
-      // 1. 画像生成 (Imagen)
-      const imgData = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt: `${customPrompt}, photo-realistic, cinematic campsite design, nature, high resolution` }],
-            parameters: { sampleCount: 1 }
-          })
-        }
-      );
-      const imageUrl = imgData.predictions?.[0] ? `data:image/png;base64,${imgData.predictions[0].bytesBase64Encoded}` : null;
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-      // 2. 解説文生成 (Gemini)
-      const textData = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `キャンプ場のデザイン案を日本語で詳しく解説してください。構成：コンセプト名、概要（2行）、デザインのポイント（3点）、おすすめギア。キーワード：${customPrompt}` }] }]
-          })
-        }
-      );
-      const explanation = textData.candidates?.[0]?.content?.parts?.[0]?.text || "解説の生成に失敗しました。";
+        // --- 設定 ---
+        // 公開環境でAIを動かす場合は、ここにAPIキーを入力してください
+        const apiKey = ""; 
+        const appId = "campsite-project";
 
-      setCustomResult({ imageUrl, explanation });
-    } catch (error) {
-      console.error("Custom generation failed:", error);
-      setErrorMessage("生成中にエラーが発生しました。しばらく時間を置いてから再度お試しください。");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+        // アイコンコンポーネント (Lucideの代わりにSVGを使用し、依存を減らす)
+        const Icon = ({ name, className = "w-6 h-6" }) => {
+            const icons = {
+                compass: <path d="m16.24 7.76-1.41 4.95-4.95 1.41 1.41-4.95 4.95-1.41ZM9 9l4.5 4.5m-4.5 0L13.5 9M22 12A10 10 0 1 1 2 12a10 10 0 0 1 20 0Z" />,
+                trees: <path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M18 14v.2A3 3 0 0 1 16.9 20H13a3 3 0 0 1-1-5.8V14a3 3 0 0 1 6 0Z"/><path d="M14 10V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v4"/><path d="M18 14v-4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/><circle cx="7" cy="18" r="2"/><circle cx="15" cy="12" r="2"/>,
+                waves: <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>,
+                sun: <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>,
+                users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>,
+                sparkles: <path d="m12 3 1.91 5.82L20 10.73l-4.54 4.42L16.55 21 12 17.27 7.45 21l1.09-5.85L4 10.73l6.09-1.91L12 3Z"/>,
+                x: <path d="M18 6 6 18"/><path d="m6 6 12 12"/>,
+                maximize: <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>,
+                chevron: <path d="m9 18 6-6-6-6"/>,
+                loader: <path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name]}
+                </svg>
+            );
+        };
 
-  return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans p-4 md:p-8">
-      {/* Header */}
-      <header className="max-w-7xl mx-auto mb-12 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-emerald-700 text-white rounded-2xl shadow-lg">
-            <Compass className="w-8 h-8" />
-          </div>
-        </div>
-        <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">Campsite Master Plan Library</h1>
-        <p className="text-lg text-stone-500 max-w-2xl mx-auto mb-8">
-          20の基本コンセプト案と準備されたビジュアルアセット。
-        </p>
+        const CATEGORIES = ["すべて", "景観重視", "プライバシー", "環境配慮", "ラグジュアリー", "交流重視"];
 
-        {/* Categories Tab */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                activeCategory === cat 
-                ? "bg-emerald-700 text-white shadow-md scale-105" 
-                : "bg-white text-stone-500 hover:bg-stone-100 border border-stone-200"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </header>
+        const PRESET_IDEAS = Array.from({ length: 20 }, (_, i) => {
+            const id = i + 1;
+            const paddedId = String(id).padStart(2, '0');
+            const category = CATEGORIES[1 + (i % (CATEGORIES.length - 1))];
+            return {
+                id,
+                title: `コンセプト案 #${paddedId}`,
+                category,
+                localImage: `public/data/img${paddedId}.png`,
+                description: `img${paddedId}.png をベースにしたキャンプ場デザイン案。地形と自然を最大限に活かした設計です。`,
+                points: ["自然との調和", "独自の宿泊体験", "持続可能な運営"],
+                gear: "厳選されたアウトドア用品",
+                imagePrompt: `A beautiful ${category} campsite, high quality photography, 4k.`
+            };
+        });
 
-      {/* Main Grid */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
-        {/* Custom Generator Start Card */}
-        <div className="bg-emerald-50 rounded-2xl border-2 border-dashed border-emerald-200 p-6 flex flex-col items-center justify-center text-center hover:bg-emerald-100/50 transition-colors group">
-          <Sparkles className="w-8 h-8 text-emerald-600 mb-3 group-hover:scale-110 transition-transform" />
-          <h3 className="font-bold text-emerald-900 mb-2 text-sm uppercase tracking-wider">AI Generator</h3>
-          <input 
-            type="text" 
-            placeholder="新しい案を入力..."
-            className="w-full px-3 py-2 bg-white rounded-lg text-xs mb-3 border border-emerald-200 outline-none focus:ring-1 focus:ring-emerald-500"
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-          />
-          <button 
-            onClick={handleCustomGenerate}
-            disabled={isGenerating}
-            className="w-full py-2 bg-emerald-700 text-white rounded-lg text-xs font-bold hover:bg-emerald-800 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-            {isGenerating ? "生成中..." : "アイデアを生成"}
-          </button>
-          {errorMessage && <p className="mt-2 text-[10px] text-red-500">{errorMessage}</p>}
-        </div>
+        function App() {
+            const [selectedIdea, setSelectedIdea] = useState(null);
+            const [activeCategory, setActiveCategory] = useState("すべて");
+            const [generatedImages, setGeneratedImages] = useState({});
+            const [loadingImages, setLoadingImages] = useState({});
+            const [customPrompt, setCustomPrompt] = useState("");
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [customResult, setCustomResult] = useState(null);
 
-        {filteredIdeas.map((idea) => (
-          <div 
-            key={idea.id} 
-            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-200 cursor-pointer flex flex-col"
-            onClick={() => setSelectedIdea(idea)}
-          >
-            {/* Image Box */}
-            <div className="relative h-48 bg-stone-100 overflow-hidden">
-              <img 
-                src={idea.localImage} 
-                alt={idea.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                onError={(e) => {
-                  // ローカル画像がない場合にAI生成を実行
-                  if (!generatedImages[idea.id] && !loadingImages[idea.id]) {
-                    generateImageForIdea(idea.id, idea.imagePrompt);
-                  }
-                  // AI画像があればそれを表示、なければプレースホルダー
-                  if (generatedImages[idea.id]) {
-                    e.target.src = generatedImages[idea.id];
-                  } else {
-                    e.target.src = "https://placehold.co/600x400/f5f5f4/065f46?text=Loading+Visual...";
-                  }
-                }}
-              />
-              {loadingImages[idea.id] && (
-                <div className="absolute inset-0 flex items-center justify-center bg-stone-100/50 backdrop-blur-sm">
-                  <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+            const filteredIdeas = activeCategory === "すべて" 
+                ? PRESET_IDEAS 
+                : PRESET_IDEAS.filter(idea => idea.category === activeCategory);
+
+            const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
+                if (!apiKey) throw new Error("API Key is missing");
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(url, options);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return await response.json();
+                    } catch (err) {
+                        if (i === retries - 1) throw err;
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2;
+                    }
+                }
+            };
+
+            const generateImageForIdea = async (id, prompt) => {
+                if (!apiKey || generatedImages[id] || loadingImages[id]) return;
+                setLoadingImages(prev => ({ ...prev, [id]: true }));
+                try {
+                    const data = await fetchWithRetry(
+                        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                instances: [{ prompt }],
+                                parameters: { sampleCount: 1 }
+                            })
+                        }
+                    );
+                    if (data.predictions?.[0]) {
+                        setGeneratedImages(prev => ({ ...prev, [id]: `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}` }));
+                    }
+                } catch (e) { console.error(e); }
+                finally { setLoadingImages(prev => ({ ...prev, [id]: false })); }
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    {!apiKey && (
+                        <div className="max-w-7xl mx-auto mb-6 p-4 bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-sm flex items-center gap-3">
+                            <Icon name="sun" className="w-5 h-5" />
+                            <span>AI機能を利用するにはAPIキーの設定が必要です。コード内の <code>apiKey</code> 変数を編集してください。</span>
+                        </div>
+                    )}
+
+                    <header className="max-w-7xl mx-auto mb-12 text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="p-3 bg-emerald-700 text-white rounded-2xl shadow-lg">
+                                <Icon name="compass" className="w-8 h-8" />
+                            </div>
+                        </div>
+                        <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">CampDesign Ideas 2026</h1>
+                        <div className="flex flex-wrap justify-center gap-2 mb-8">
+                            {CATEGORIES.map(cat => (
+                                <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat ? "bg-emerald-700 text-white shadow-md" : "bg-white text-stone-500 border"}`}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {filteredIdeas.map(idea => (
+                            <div key={idea.id} onClick={() => setSelectedIdea(idea)} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer border border-stone-200 group">
+                                <div className="h-48 bg-stone-100 relative overflow-hidden">
+                                    <img 
+                                        src={generatedImages[idea.id] || idea.localImage} 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                        onError={(e) => {
+                                            if (!generatedImages[idea.id]) generateImageForIdea(idea.id, idea.imagePrompt);
+                                            e.target.src = "https://placehold.co/600x400/f5f5f4/065f46?text=Campsite+Visual";
+                                        }}
+                                    />
+                                    {loadingImages[idea.id] && <div className="absolute inset-0 flex items-center justify-center bg-white/50"><Icon name="loader" className="w-6 h-6 animate-spin" /></div>}
+                                </div>
+                                <div className="p-4">
+                                    <div className="text-[10px] text-stone-400 font-mono">img{String(idea.id).padStart(2, '0')}.png</div>
+                                    <h3 className="font-bold text-stone-800 line-clamp-1">{idea.title}</h3>
+                                    <div className="mt-4 text-[10px] font-bold text-emerald-700 uppercase flex items-center justify-between">詳細を表示 <Icon name="chevron" className="w-3 h-3" /></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {selectedIdea && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden relative">
+                                <button onClick={() => setSelectedIdea(null)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-md z-10"><Icon name="x" className="w-5 h-5 text-stone-600" /></button>
+                                <div className="flex flex-col md:flex-row">
+                                    <div className="md:w-1/2 h-64 md:h-auto bg-stone-100">
+                                        <img src={generatedImages[selectedIdea.id] || selectedIdea.localImage} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="md:w-1/2 p-8">
+                                        <span className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest">{selectedIdea.category}</span>
+                                        <h2 className="text-2xl font-bold mb-4">{selectedIdea.title}</h2>
+                                        <p className="text-stone-500 text-sm mb-6">{selectedIdea.description}</p>
+                                        <button onClick={() => setSelectedIdea(null)} className="w-full py-3 bg-stone-900 text-white rounded-xl font-bold text-sm">閉じる</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-              )}
-              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold text-emerald-800 uppercase tracking-tighter shadow-sm">
-                {idea.category}
-              </div>
-              <div className="absolute bottom-2 right-2 p-1.5 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Maximize2 className="w-3 h-3" />
-              </div>
-            </div>
+            );
+        }
 
-            {/* Content */}
-            <div className="p-4 flex flex-col flex-grow">
-              <div className="text-[10px] text-stone-400 font-mono mb-1">ID: img{String(idea.id).padStart(2, '0')}.png</div>
-              <h3 className="text-md font-bold text-stone-800 mb-2 group-hover:text-emerald-700 transition-colors line-clamp-1">{idea.title}</h3>
-              <p className="text-stone-500 text-xs line-clamp-2 leading-relaxed flex-grow">
-                {idea.description}
-              </p>
-              <div className="mt-4 flex items-center justify-between text-emerald-700 text-[10px] font-bold group-hover:translate-x-1 transition-transform uppercase tracking-widest">
-                詳細を表示 <ChevronRight className="w-3 h-3" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* AI Result Area */}
-      {customResult && (
-        <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden mb-16 border border-emerald-100">
-          <div className="flex flex-col md:flex-row">
-            <div className="md:w-1/2 h-64 md:h-auto bg-stone-100">
-              {customResult.imageUrl ? (
-                <img src={customResult.imageUrl} alt="AI Generated" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-stone-400 flex-col gap-2">
-                  <Camera className="w-8 h-8" />
-                  <span>画像生成に失敗しました</span>
-                </div>
-              )}
-            </div>
-            <div className="md:w-1/2 p-8">
-              <div className="flex items-center gap-2 text-emerald-600 mb-4">
-                <Sparkles className="w-5 h-5" />
-                <span className="font-bold tracking-widest uppercase text-xs">New Vision Created</span>
-              </div>
-              <div className="whitespace-pre-wrap text-stone-700 text-sm leading-relaxed prose prose-emerald max-w-none">
-                {customResult.explanation}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal View */}
-      {selectedIdea && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden relative animate-in zoom-in-95 duration-200 my-auto">
-            <button 
-              onClick={() => setSelectedIdea(null)}
-              className="absolute top-4 right-4 p-2 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors z-20"
-            >
-              <X className="w-5 h-5 text-stone-600" />
-            </button>
-
-            <div className="flex flex-col md:flex-row">
-              <div className="md:w-1/2 h-64 md:h-auto bg-stone-200 relative">
-                 <img 
-                    src={generatedImages[selectedIdea.id] || selectedIdea.localImage} 
-                    alt={selectedIdea.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                       e.target.src = "https://placehold.co/600x400/f5f5f4/065f46?text=Visual+Missing";
-                    }}
-                  />
-                  <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded text-[10px] font-mono shadow-sm">
-                    Asset Path: /public/data/img{String(selectedIdea.id).padStart(2, '0')}.png
-                  </div>
-              </div>
-
-              <div className="md:w-1/2 p-8">
-                <span className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mb-2 block">{selectedIdea.category}</span>
-                <h2 className="text-2xl font-bold text-stone-900 mb-4">{selectedIdea.title}</h2>
-                <p className="text-stone-500 text-sm leading-relaxed mb-6">
-                  {selectedIdea.description}
-                </p>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-bold text-stone-800 text-sm flex items-center gap-2 mb-2">
-                      <div className="w-1 h-4 bg-emerald-500 rounded-full" />
-                      プランニング
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {selectedIdea.points.map((p, i) => (
-                        <li key={i} className="text-stone-600 text-[11px] flex gap-2">
-                          <span className="text-emerald-500 font-bold">•</span>
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
-                    <h4 className="font-bold text-stone-800 text-xs mb-1">推奨装備</h4>
-                    <p className="text-stone-500 text-[11px] italic leading-tight">{selectedIdea.gear}</p>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => setSelectedIdea(null)}
-                  className="w-full mt-8 py-3 bg-stone-900 text-white rounded-xl font-bold text-sm hover:bg-emerald-800 transition-colors"
-                >
-                  このプランを閉じる
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
