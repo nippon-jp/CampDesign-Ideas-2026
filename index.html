@@ -28,7 +28,6 @@
         const { useState, useEffect, useMemo } = React;
 
         // --- 設定 ---
-        // 公開環境でAIを動かす場合は、ここにAPIキーを入力してください
         const apiKey = ""; 
         const appId = "campsite-project";
 
@@ -63,9 +62,9 @@
                 id,
                 title: `コンセプト案 #${paddedId}`,
                 category,
-                // GitHub Pagesのルートにdataフォルダがある場合を想定
-                localImage: `data/img${paddedId}.png`,
-                altPath: `public/data/img${paddedId}.png`,
+                // スクリーンショットに合わせて、index.htmlと同じ階層のファイル名を指定
+                localImage: `img${paddedId}.png`,
+                altPath: `data/img${paddedId}.png`,
                 description: `img${paddedId}.png をベースにしたデザイン案。自然の形状を活かした配置計画です。`,
                 points: ["地形の活用", "プライベート空間", "自然素材の採用"],
                 gear: "高機能アウトドアギア",
@@ -78,7 +77,6 @@
             const [activeCategory, setActiveCategory] = useState("すべて");
             const [generatedImages, setGeneratedImages] = useState({});
             const [loadingImages, setLoadingImages] = useState({});
-            const [failedImages, setFailedImages] = useState({});
 
             const filteredIdeas = activeCategory === "すべて" 
                 ? PRESET_IDEAS 
@@ -107,33 +105,22 @@
             const handleImageError = (idea, e) => {
                 const currentSrc = e.target.src;
                 
-                // 1回目のエラー: 代替パス(public/...)を試す
+                // 1回目のエラー: 代替パス(data/...)を試す
                 if (!currentSrc.includes(idea.altPath) && !currentSrc.startsWith('data:')) {
-                    console.log(`Retrying with alt path for ${idea.id}`);
                     e.target.src = idea.altPath;
                 } 
-                // 2回目のエラー: AI生成を試みる（APIキーがある場合）
+                // 2回目のエラー: AI生成（APIキーがある場合）
                 else if (apiKey && !generatedImages[idea.id]) {
                     generateImageForIdea(idea.id, idea.imagePrompt);
                 }
-                // 万策尽きた場合: プレースホルダーを表示
+                // 最後: プレースホルダー
                 else {
-                    e.target.src = `https://placehold.co/600x400/f5f5f4/065f46?text=Image+img${String(idea.id).padStart(2, '0')}.png+Missing`;
+                    e.target.src = `https://placehold.co/600x400/f5f5f4/065f46?text=img${String(idea.id).padStart(2, '0')}.png+NotFound`;
                 }
             };
 
             return (
                 <div className="min-h-screen p-4 md:p-8">
-                    {!apiKey && (
-                        <div className="max-w-7xl mx-auto mb-6 p-4 bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Icon name="sun" className="w-5 h-5" />
-                                <span>画像が表示されない場合は、<code>data</code> フォルダ内に <code>img01.png</code> ... が正しく配置されているか確認してください。</span>
-                            </div>
-                            <span className="font-mono text-[10px] opacity-50 hidden md:block">GitHub Pages Path Mode</span>
-                        </div>
-                    )}
-
                     <header className="max-w-7xl mx-auto mb-12 text-center">
                         <div className="flex justify-center mb-4">
                             <div className="p-3 bg-emerald-700 text-white rounded-2xl shadow-lg">
@@ -141,6 +128,7 @@
                             </div>
                         </div>
                         <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">CampDesign Ideas 2026</h1>
+                        <p className="text-stone-500 mb-8">ルートディレクトリに置かれた img01.png〜img20.png を自動で読み込みます。</p>
                         <div className="flex flex-wrap justify-center gap-2 mb-8">
                             {CATEGORIES.map(cat => (
                                 <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat ? "bg-emerald-700 text-white shadow-md" : "bg-white text-stone-500 border"}`}>
@@ -168,7 +156,7 @@
                                 </div>
                                 <div className="p-4">
                                     <div className="text-[10px] text-stone-400 font-mono mb-1 flex justify-between">
-                                        <span>img{String(idea.id).padStart(2, '0')}.png</span>
+                                        <span>{idea.localImage}</span>
                                         {generatedImages[idea.id] && <span className="text-emerald-500">AI Generated</span>}
                                     </div>
                                     <h3 className="font-bold text-stone-800 line-clamp-1">{idea.title}</h3>
@@ -191,28 +179,17 @@
                                         <img 
                                             src={generatedImages[selectedIdea.id] || selectedIdea.localImage} 
                                             className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                if (e.target.src !== selectedIdea.altPath) e.target.src = selectedIdea.altPath;
-                                            }}
+                                            onError={(e) => handleImageError(selectedIdea, e)}
                                         />
                                     </div>
                                     <div className="md:w-1/2 p-8">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest">{selectedIdea.category}</span>
-                                            <span className="text-[10px] font-mono text-stone-400">img{String(selectedIdea.id).padStart(2, '0')}.png</span>
+                                            <span className="text-[10px] font-mono text-stone-400">{selectedIdea.localImage}</span>
                                         </div>
                                         <h2 className="text-2xl font-bold mb-4">{selectedIdea.title}</h2>
                                         <p className="text-stone-500 text-sm mb-6 leading-relaxed">{selectedIdea.description}</p>
                                         
-                                        <div className="space-y-4 mb-8">
-                                            <div className="bg-stone-50 p-4 rounded-xl">
-                                                <h4 className="text-xs font-bold text-stone-700 mb-2">デザインのポイント</h4>
-                                                <ul className="text-xs text-stone-500 space-y-1">
-                                                    {selectedIdea.points.map((p, i) => <li key={i}>• {p}</li>)}
-                                                </ul>
-                                            </div>
-                                        </div>
-
                                         <button onClick={() => setSelectedIdea(null)} className="w-full py-3 bg-emerald-900 text-white rounded-xl font-bold text-sm hover:bg-emerald-800 transition-colors">
                                             閉じる
                                         </button>
