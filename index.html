@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campsite Master Plan Library 2026</title>
+    <title>キャンプ場マスタープラン集 2026</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -52,14 +52,14 @@
             );
         };
 
-        const CATEGORIES = ["ALL", "Facility", "Activity", "Environment", "Luxury", "Interact"];
+        const CATEGORIES = ["すべて", "施設", "アクティビティ", "環境", "ラグジュアリー", "交流"];
 
         // --- ここで各コンセプト案を直接編集してください ---
         const PRESET_IDEAS = [
             {
                 id: 1,
                 title: "キャンプ場の入り口",
-                category: "Facility",
+                category: "施設",
                 localImage: "img01.png",
                 description: "ワクワクするようでシンプルな標識にする",
                 points: ["特別感", "大自然の入り口", "シンプルでレトロな照明"],
@@ -76,7 +76,7 @@
             },
             {
                 id: 3,
-                title: "エコサイト - Sustainable Eco",
+                title: "エコサイト - サステナブル",
                 category: "環境配慮",
                 localImage: "img03.png",
                 description: "オフグリッドを体現。太陽光発電と雨水利用システムを備え、自給自足の体験を提供します。",
@@ -86,7 +86,7 @@
             {
                 id: 4,
                 title: "共同トイレ",
-                category: "Facility",
+                category: "施設",
                 localImage: "img04.png",
                 description: "",
                 points: ["", "屋外共同", "手洗い場"],
@@ -95,29 +95,28 @@
             {
                 id: 5,
                 title: "コミュニティ・ハブ",
-                category: "Facility", "Interact",
+                category: "施設・交流",
                 localImage: "img05.png",
                 description: "中央に巨大な共有焚き火場を配置。ソロキャンパー同士が自然に会話を楽しめる空間です。",
                 points: ["アイランドキッチン", "サークル状ベンチ", "共有ラウンジ"],
                 gear: "大型鋳物鍋、スパイスセット",
                 imagePrompt: "Circular communal campsite hub at night with central fire pit."
             },
-            // 6個目以降の枠（必要に応じてタイトルや説明文を書き換えてください）
-            { id: 6, title: "新規コンセプト案 #06", category: "景観重視", localImage: "img06.png", description: "ここを編集して新しい案を記載してください。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 7, title: "新規コンセプト案 #07", category: "プライバシー", localImage: "img07.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 8, title: "新規コンセプト案 #08", category: "環境配慮", localImage: "img08.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 9, title: "新規コンセプト案 #09", category: "ラグジュアリー", localImage: "img09.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 10, title: "新規コンセプト案 #10", category: "交流重視", localImage: "img10.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 11, title: "新規コンセプト案 #11", category: "景観重視", localImage: "img11.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 12, title: "新規コンセプト案 #12", category: "プライバシー", localImage: "img12.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 13, title: "新規コンセプト案 #13", category: "環境配慮", localImage: "img13.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 14, title: "新規コンセプト案 #14", category: "ラグジュアリー", localImage: "img14.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 15, title: "新規コンセプト案 #15", category: "交流重視", localImage: "img15.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 16, title: "新規コンセプト案 #16", category: "景観重視", localImage: "img16.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 17, title: "新規コンセプト案 #17", category: "プライバシー", localImage: "img17.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 18, title: "新規コンセプト案 #18", category: "環境配慮", localImage: "img18.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 19, title: "新規コンセプト案 #19", category: "ラグジュアリー", localImage: "img19.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" },
-            { id: 20, title: "新規コンセプト案 #20", category: "交流重視", localImage: "img20.png", description: "説明文を入力。", points: ["Point A", "Point B"], gear: "Gear X", imagePrompt: "Campsite visualization" }
+            { id: 6, title: "新規コンセプト案 #06", category: "景観重視", localImage: "img06.png", description: "ここを編集して新しい案を記載してください。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 7, title: "新規コンセプト案 #07", category: "プライバシー", localImage: "img07.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 8, title: "新規コンセプト案 #08", category: "環境配慮", localImage: "img08.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 9, title: "新規コンセプト案 #09", category: "ラグジュアリー", localImage: "img09.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 10, title: "新規コンセプト案 #10", category: "交流重視", localImage: "img10.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 11, title: "新規コンセプト案 #11", category: "景観重視", localImage: "img11.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 12, title: "新規コンセプト案 #12", category: "プライバシー", localImage: "img12.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 13, title: "新規コンセプト案 #13", category: "環境配慮", localImage: "img13.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 14, title: "新規コンセプト案 #14", category: "ラグジュアリー", localImage: "img14.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 15, title: "新規コンセプト案 #15", category: "交流重視", localImage: "img15.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 16, title: "新規コンセプト案 #16", category: "景観重視", localImage: "img16.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 17, title: "新規コンセプト案 #17", category: "プライバシー", localImage: "img17.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 18, title: "新規コンセプト案 #18", category: "環境配慮", localImage: "img18.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 19, title: "新規コンセプト案 #19", category: "ラグジュアリー", localImage: "img19.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" },
+            { id: 20, title: "新規コンセプト案 #20", category: "交流重視", localImage: "img20.png", description: "説明文を入力。", points: ["ポイント A", "ポイント B"], gear: "装備 X", imagePrompt: "Campsite visualization" }
         ];
 
         function App() {
@@ -151,10 +150,15 @@
             };
 
             const handleImageError = (idea, e) => {
-                if (apiKey && !generatedImages[idea.id]) {
+                // 無限ループ防止
+                if (e.target.dataset.errored) return;
+                e.target.dataset.errored = "true";
+
+                if (apiKey && idea.imagePrompt && !generatedImages[idea.id]) {
                     generateImageForIdea(idea.id, idea.imagePrompt);
                 } else {
-                    e.target.src = `https://placehold.co/600x400/f5f5f4/065f46?text=${idea.localImage}+Missing`;
+                    const label = encodeURIComponent(idea.title || idea.localImage);
+                    e.target.src = `https://placehold.co/600x400/d1fae5/065f46?text=${label}`;
                 }
             };
 
@@ -166,7 +170,7 @@
                                 <Icon name="compass" className="w-8 h-8" />
                             </div>
                         </div>
-                        <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">Campsite Master Plan Library 2026</h1>
+                        <h1 className="text-4xl font-bold text-emerald-950 mb-4 tracking-tight">キャンプ場マスタープラン集 2026</h1>
                         <p className="text-stone-500 mb-8">各カードのタイトルや説明文は HTML 内の PRESET_IDEAS 配列で直接編集できます。</p>
                         
                         <div className="flex flex-wrap justify-center gap-2 mb-8">
